@@ -75,9 +75,14 @@ spec:
       nodeSelector:
          env: prod
   ```
+  
+## Let's analyze a basic cluster
+<img width="1140" height="719" alt="Screenshot 2025-09-21 at 6 42 44 PM" src="https://github.com/user-attachments/assets/4a2274b6-5c38-4ec1-b1dc-ea6b99b11f4b" />
 
+#### Why kubeproxy as Daemon set?
 
-
+* Kubeproxy= manages netwroking for pods on each node (service routing, ip tables etc)
+* Needs to run on every node so Pods on that node can communicate with services inside the cluster.
 
 
 
@@ -86,3 +91,4 @@ spec:
 
 
       
+
