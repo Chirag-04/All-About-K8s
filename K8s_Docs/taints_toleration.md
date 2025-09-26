@@ -64,3 +64,28 @@ Here’s the subtle point:
 * If NoExecute taint → already running pods without toleration are evicted.
 
 
+## Example 
+
+<img width="984" height="499" alt="Screenshot 2025-09-26 at 7 34 52 AM" src="https://github.com/user-attachments/assets/06c5a418-b6db-41b9-a60f-93681f492d00" />
+<img width="1337" height="843" alt="Screenshot 2025-09-26 at 7 40 20 AM" src="https://github.com/user-attachments/assets/ea3a6b7a-d7f0-47be-b355-e90bee05a453" />
+<img width="977" height="589" alt="Screenshot 2025-09-26 at 7 51 21 AM" src="https://github.com/user-attachments/assets/fa236272-d361-4974-a45b-fd9a75e24771" />
+
+* The control plane node is already tainted by default, but the worker node is initially not tainted.
+* When we create a pod before applying any custom taints, it gets scheduled on the available worker node (node1).
+* After applying a taint on the node, new pods cannot be scheduled there if they do not have a matching toleration.
+* This behavior can be confirmed using: kubectl describe pod <pod-name>
+
+```bash
+You may see a message like:
+
+FailedScheduling 0/2 nodes are available: 
+1 node(s) had untolerated taint {gpu: ai}, 
+1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }. 
+Preemption is not helpful for scheduling.
+```
+
+* To allow the pod to be scheduled on a tainted node, we must add a matching toleration in the pod spec.
+* Depending on the effect of the taint (NoSchedule, PreferNoSchedule, NoExecute), scheduling behavior and/or eviction of existing pods will change.
+
+
+
