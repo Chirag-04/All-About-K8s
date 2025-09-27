@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-tolerated
+spec:
+  tolerations:
+  - key: "gpu"
+    operator: "Equal"
+    value: "ai"
+    effect: "NoSchedule"
+  containers:
+  - name: nginx
+    image: nginx
+
+# now this pod would be able to tolerate the gpu=ai:NoScheudle taint on node and will be able to get schedule
+
