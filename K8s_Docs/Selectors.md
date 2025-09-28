@@ -27,4 +27,19 @@
     env: production
    ```
 
-   
+<img width="1270" height="458" alt="Screenshot 2025-09-28 at 7 36 43 PM" src="https://github.com/user-attachments/assets/34b7dd2f-ba72-467b-9329-064667c35023" />
+
+
+
+<br><br>
+
+
+<img width="713" height="622" alt="Screenshot 2025-09-28 at 7 38 42 PM" src="https://github.com/user-attachments/assets/6f449570-1ae6-4a2c-85b1-7c79ad6ce489" />
+
+
+<br><br>
+
+
+
+<img width="1270" height="800" alt="Screenshot 2025-09-28 at 7 39 50 PM" src="https://github.com/user-attachments/assets/563f3cb1-f443-4cc7-97f7-c7615b911e05" />
+
