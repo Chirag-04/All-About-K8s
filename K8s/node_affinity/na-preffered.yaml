@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: preferred-na-deploy
+spec:
+  replicas: 20
+  selector:
+    matchLabels:
+      app: app1
+  template:
+    metadata:
+      labels:
+        app: app1
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: model
+                operator: In
+                values:
+                - ml
+                - ai
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 10
+            preference:
+              matchExpressions:
+              - key: storage
+                operator: In
+                values:
+                - ml
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: storage
+                operator: In
+                values:
+                - ai
+      containers:
+      - name: nginx
+        image: nginx

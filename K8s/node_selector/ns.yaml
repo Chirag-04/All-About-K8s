@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: new-app-pod-after-removing-node-label
+spec:
+  nodeSelector:
+    model: gpu
+  containers:
+  - name: new-app-pod
+    image: nginx
+    ports:
+    - containerPort: 80
