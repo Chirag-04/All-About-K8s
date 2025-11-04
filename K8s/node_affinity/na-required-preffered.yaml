@@ -14,6 +14,14 @@ spec:
     spec:
       affinity:
         nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: model
+                operator: In
+                values:
+                - ml
+                - ai
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 10
             preference:
@@ -33,8 +41,10 @@ spec:
       - name: nginx
         image: nginx
 
-# This uses only preferred (soft) node affinity, so:
-# Scheduler will try to place pods on nodes labeled model=ml (most preferred) or model=ai (less preferred).
-# Node with ml gets higher weight (10) → most pods likely go here.
-# Node with ai gets lower weight (2) → some pods may go here.
-# Pods can still go to any other node (e.g., gpu) if scheduler decides — preferences are not mandatory.
+# This configuration combines required and preferred affinities:
+
+# Required rule → Pods can be scheduled only on nodes labeled model=ml or model=ai (strict filter).
+
+# Preferred rule → Among those eligible nodes, the scheduler will favor ml (weight 10) over ai (weight 2).
+
+# Result → All pods land on ml or ai nodes, with most on ml, none on other nodes (like gpu).
