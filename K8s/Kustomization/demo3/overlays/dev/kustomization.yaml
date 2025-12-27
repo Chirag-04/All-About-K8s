@@ -1,34 +1,65 @@
-apiVersion: kustomize.config.k8s.io/v1beta1 # Specifies the schema version for Kustomize
-kind: Kustomization                        # Identifies this file as a Kustomize configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
 # Reference to shared base
 resources:
-  - ../../base                             # The path to your "golden" manifests (source of truth)
+  - ../../base
 
-# GLOBAL TRANSFORMERS (Apply to all resources)
+# Optional: Apply name prefix/suffix
+nameSuffix: -dev
+namePrefix: app1-
 
-nameSuffix: -dev                           # Appends "-dev" to the end of every resource name
-namePrefix: app1-                          # Prepends "app1-" to the beginning of every resource name
-                                           # Result: nginx-deploy -> app1-nginx-deploy-dev
-
+# Add common labels and annotations
 labels:
   - pairs:
-      env: dev                             # Adds the label "env: dev" to all resources
-    includeSelectors: true                 # CRITICAL: Also updates Deployment selectors and Service selectors 
-                                           # so they continue to "match" the new labels.
-
-images:
-- name: nginx                              # Finds any container using the image "nginx"
-  newName: nginx                           # (Optional) Can change the image registry/repo
-  newTag: "latest"                         # Swaps the tag to "latest" (ideal for dev/testing)
+      env: dev
+    includeSelectors: true
 
 commonAnnotations:
-  branch: dev                              # Adds "branch: dev" to metadata.annotations (good for CI/CD tracking)
-  support: 800-800                         # Adds another annotation; annotations don't affect logic, just metadata.
+  branch: dev
+  support: 800-800
 
-namespace: dev                             # Forces all resources to be deployed into the "dev" namespace.
-                                           # Note: You must ensure this namespace exists in your cluster!
+# Override container image
+images:
+  - name: nginx
+    newName: nginx
+    newTag: "latest"
 
+# Target namespace
+namespace: dev
+
+# Scale to 2 replicas
 replicas:
-- name: nginx-deploy                       # Targets the Deployment named "nginx-deploy" (from base)
-  count: 2                                 # Overrides whatever replica count was set in the base file.
+  - name: nginx-deploy
+    count: 2
+
+
+patches:
+  # Decide the target it can be deployment / service / daemonset etc
+  # patch for deployment
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: nginx-deploy
+    # there are two types of patch styles ie 1. json patch 2. merge patch style
+    # in json type we specify the operation, path and the json yaml
+    # in merge style patch we write the partial target yaml
+    patch: |-
+      - op: add 
+        path: /spec/template/spec/containers/0/env
+        value:  
+          - name: LOG_LEVEL
+            value: debug
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+      - op: remove
+        path: /metadata/labels/unused 
+         
