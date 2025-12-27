@@ -1,0 +1,393 @@
+# ============================================================
+# KUSTOMIZE PATCHES GUIDE - Dev Environment
+# ============================================================
+
+# Updated overlays/dev/kustomization.yaml with various patches
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Reference to base
+resources:
+  - ../../base
+
+# GLOBAL TRANSFORMERS
+nameSuffix: -dev
+namePrefix: app1-
+namespace: dev
+
+labels:
+  - pairs:
+      env: dev
+      team: platform
+    includeSelectors: true
+
+images:
+  - name: nginx
+    newName: nginx
+    newTag: "latest"
+
+commonAnnotations:
+  branch: dev
+  support: 800-800
+
+replicas:
+  - name: nginx-deploy
+    count: 3  # Changed from 2 to 3 for dev
+
+# ============================================================
+# PATCHES SECTION
+# ============================================================
+
+patches:
+  # -----------------------------------------------------------
+  # 1. STRATEGIC MERGE PATCH - Add Environment Variables
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            containers:
+              - name: nginx
+                env:
+                  - name: ENVIRONMENT
+                    value: "development"
+                  - name: LOG_LEVEL
+                    value: "debug"
+                  - name: API_ENDPOINT
+                    value: "https://api-dev.example.com"
+
+  # -----------------------------------------------------------
+  # 2. JSON PATCH - Add Resource Limits and Requests
+  # -----------------------------------------------------------
+  - target:
+      kind: Deployment
+      name: nginx-deploy
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+
+  # -----------------------------------------------------------
+  # 3. STRATEGIC MERGE - Add Liveness and Readiness Probes
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            containers:
+              - name: nginx
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 80
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+                readinessProbe:
+                  httpGet:
+                    path: /ready
+                    port: 80
+                  initialDelaySeconds: 10
+                  periodSeconds: 5
+                  timeoutSeconds: 3
+                  failureThreshold: 3
+
+  # -----------------------------------------------------------
+  # 4. JSON PATCH - Modify Service Type (NodePort to LoadBalancer)
+  # -----------------------------------------------------------
+  - target:
+      kind: Service
+      name: nginx-svc
+    patch: |-
+      - op: replace
+        path: /spec/type
+        value: LoadBalancer
+
+  # -----------------------------------------------------------
+  # 5. STRATEGIC MERGE - Add Volume Mounts for ConfigMap
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            containers:
+              - name: nginx
+                volumeMounts:
+                  - name: nginx-config
+                    mountPath: /etc/nginx/conf.d
+                  - name: cache
+                    mountPath: /var/cache/nginx
+            volumes:
+              - name: nginx-config
+                configMap:
+                  name: nginx-config-dev
+              - name: cache
+                emptyDir: {}
+
+  # -----------------------------------------------------------
+  # 6. JSON PATCH - Add NodeSelector
+  # -----------------------------------------------------------
+  - target:
+      kind: Deployment
+      name: nginx-deploy
+    patch: |-
+      - op: add
+        path: /spec/template/spec/nodeSelector
+        value:
+          environment: dev
+          disktype: ssd
+
+  # -----------------------------------------------------------
+  # 7. STRATEGIC MERGE - Add Deployment Strategy
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 0
+
+  # -----------------------------------------------------------
+  # 8. JSON PATCH - Add Security Context
+  # -----------------------------------------------------------
+  - target:
+      kind: Deployment
+      name: nginx-deploy
+    patch: |-
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 1000
+          fsGroup: 2000
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext
+        value:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: false
+
+  # -----------------------------------------------------------
+  # 9. STRATEGIC MERGE - Add Tolerations
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            tolerations:
+              - key: "environment"
+                operator: "Equal"
+                value: "dev"
+                effect: "NoSchedule"
+
+  # -----------------------------------------------------------
+  # 10. JSON PATCH - Add Annotations to Pod Template
+  # -----------------------------------------------------------
+  - target:
+      kind: Deployment
+      name: nginx-deploy
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/annotations
+        value:
+          prometheus.io/scrape: "true"
+          prometheus.io/port: "80"
+          prometheus.io/path: "/metrics"
+
+  # -----------------------------------------------------------
+  # 11. STRATEGIC MERGE - Add Service Account
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            serviceAccountName: nginx-sa-dev
+            automountServiceAccountToken: true
+
+  # -----------------------------------------------------------
+  # 12. JSON PATCH - Add Affinity Rules
+  # -----------------------------------------------------------
+  - target:
+      kind: Deployment
+      name: nginx-deploy
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                          - nginx
+                  topologyKey: kubernetes.io/hostname
+
+  # -----------------------------------------------------------
+  # 13. STRATEGIC MERGE - Add Init Container
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            initContainers:
+              - name: init-setup
+                image: busybox:1.35
+                command: ['sh', '-c', 'echo "Initializing..." && sleep 5']
+
+  # -----------------------------------------------------------
+  # 14. JSON PATCH - Modify Service Port
+  # -----------------------------------------------------------
+  - target:
+      kind: Service
+      name: nginx-svc
+    patch: |-
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30080
+      - op: add
+        path: /spec/sessionAffinity
+        value: ClientIP
+
+  # -----------------------------------------------------------
+  # 15. STRATEGIC MERGE - Add Multiple Containers (Sidecar)
+  # -----------------------------------------------------------
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: nginx-deploy
+      spec:
+        template:
+          spec:
+            containers:
+              - name: log-collector
+                image: fluent/fluent-bit:2.0
+                resources:
+                  limits:
+                    cpu: "100m"
+                    memory: "128Mi"
+                  requests:
+                    cpu: "50m"
+                    memory: "64Mi"
+                volumeMounts:
+                  - name: logs
+                    mountPath: /var/log/nginx
+            volumes:
+              - name: logs
+                emptyDir: {}
+
+# ============================================================
+# ADDITIONAL PATCHES USING patchesStrategicMerge (Alternative)
+# ============================================================
+
+# You can also use separate patch files:
+# patchesStrategicMerge:
+#   - deployment-patch.yaml
+#   - service-patch.yaml
+
+# ============================================================
+# PATCH LOGIC EXPLANATION
+# ============================================================
+
+# 1. STRATEGIC MERGE PATCH:
+#    - Merges your patch with the base resource
+#    - Uses Kubernetes' strategic merge semantics
+#    - Lists are merged by their "patch strategy" (merge or replace)
+#    - Best for: Adding new fields, modifying existing values
+#    - Syntax: Full resource with only fields you want to change
+
+# 2. JSON PATCH (RFC 6902):
+#    - Uses operations: add, remove, replace, move, copy, test
+#    - More precise and explicit
+#    - Best for: Complex modifications, array operations
+#    - Requires exact path specification
+#    - Operations:
+#      * add: Adds a new field
+#      * remove: Removes a field
+#      * replace: Replaces a value
+#      * move: Moves a value from one location to another
+#      * copy: Copies a value from one location to another
+#      * test: Tests if a value exists (useful for conditional patches)
+
+# 3. JSON 6902 PATCH:
+#    - Similar to JSON Patch but inline
+#    - More compact syntax
+#    - Best for: Small, targeted changes
+
+# ============================================================
+# WHEN TO USE WHICH PATCH TYPE
+# ============================================================
+
+# Use STRATEGIC MERGE when:
+#   - Adding new configuration sections
+#   - Modifying existing fields naturally
+#   - Working with complex nested structures
+#   - You want Kubernetes-native merge behavior
+
+# Use JSON PATCH when:
+#   - You need precise control over array elements
+#   - Removing specific fields
+#   - Array index-based operations
+#   - Conditional patches (using 'test' operation)
+#   - More explicit and predictable behavior needed
+
+# ============================================================
+# PATH SYNTAX FOR JSON PATCHES
+# ============================================================
+
+# /spec/template/spec/containers/0/resources
+#   │    │        │    │           │  │
+#   │    │        │    │           │  └─ Field name
+#   │    │        │    │           └──── Array index (0-based)
+#   │    │        │    └──────────────── Field name
+#   │    │        └───────────────────── Field name
+#   │    └────────────────────────────── Field name
+#   └─────────────────────────────────── Root level spec
+
+# Array paths:
+# /spec/ports/0          → First element in ports array
+# /spec/ports/-          → Append to end of array
+# /spec/ports/1/port     → Access 'port' field in second element
