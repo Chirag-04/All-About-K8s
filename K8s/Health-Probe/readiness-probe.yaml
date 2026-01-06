@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: readiness-probe-demo
+spec:
+  containers:
+  - name: busybox-app
+    image: busybox
+    command: ["sh", "-c", "touch /tmp/ready; sleep 3600"] # Creates /tmp/ready file and keeps container running for 1 hour
+    readinessProbe:
+      exec:                       # Runs a command inside the container
+        command:
+        - cat
+        - /tmp/ready               # Command checks if /tmp/ready file exists
+      initialDelaySeconds: 5       # Wait 5 seconds before the first probe
+      periodSeconds: 5             # Probe runs every 5 seconds
+      failureThreshold: 1          # Mark pod as NotReady after 1 failure
