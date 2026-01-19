@@ -3,10 +3,10 @@ kind: Pod
 metadata:
   name: emptydir-example 
 spec:
-  containers:
   volumes:
   - name: temp-storage       
-    emptyDir: {}    
+    emptyDir: {}  
+  containers:  
   - name: busybox-container  
     image: busybox          
     command: ["/bin/sh", "-c", "sleep 3600"]  
