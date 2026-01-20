@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: downwardapi-volume
+  labels:
+    app: good_app
+    owner: hr
+  annotations:
+    version: "good_version"
+spec:
+  containers:
+  - name: metadata-container
+    image: busybox
+    command: ["/bin/sh", "-c", "cat /etc/podinfo/* && sleep 3600"]
+    # The container will display the contents of all files under /etc/podinfo (i.e., metadata)
+    # and then sleep for an hour, keeping the pod alive for verification.
+    volumeMounts:
+    - name: downwardapi-volume
+      mountPath: /etc/podinfo
+      # Mounts the downward API volume at /etc/podinfo inside the container.
+  volumes:
+  - name: downwardapi-volume
+    downwardAPI:
+      items:
+      - path: "labels"
+        fieldRef:
+          fieldPath: metadata.labels
+        # Writes the Pod's labels to a file named 'labels' under /etc/podinfo.
+      - path: "annotations"
+        fieldRef:
+          fieldPath: metadata.annotations
+        # Writes the Pod's annotations to a file named 'annotations' under /etc/podinfo.
