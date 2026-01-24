@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Pod
 metadata: 
-  name: hostpath-example-pod
+  name: hostpath-example-pod-2
 spec:
   volumes:
   - name: host-volume
@@ -9,7 +9,7 @@ spec:
       path: /tmp/hostfile
       type: FileOrCreate
   containers:
-  - name: busybox-container
+  - name: busybox-container-2
     image: busybox
     command: ["sh","-c","cat /data && sleep 3600"]
     volumeMounts:
