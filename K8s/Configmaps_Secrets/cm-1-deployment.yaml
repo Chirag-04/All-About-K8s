@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata:
+  name: frontend-deploy
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend-contianer
+          image:  nginx
+          env:
+          - name: APP 
+            valueFrom:
+              configMapKeyRef:
+                name: frontend-configmap
+                key:  APP_NAME
+          - name: ENVIRONMENT 
+            valueFrom:
+              configMapKeyRef:
+                name: frontend-configmap
+                key: ENV
