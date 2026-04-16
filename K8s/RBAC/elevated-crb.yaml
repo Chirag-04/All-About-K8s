@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elevated-workload-editor               # Name of the ClusterRole for elevated workload permissions
+rules:
+  # Rule 1: Manage Pods in the core API group
+  - apiGroups: [""]                             # Core API group (no group name)
+    resources: ["pods"]                        # Pod resource (namespace-scoped)
+    verbs: ["create", "delete", "update"]     # Allowed actions on pods: create, delete, update
+
+  # Rule 2: Manage Deployments in the 'apps' API group
+  - apiGroups: ["apps"]                        # Named API group for apps resources
+    resources: ["deployments"]                 # Deployment resource (namespace-scoped)
+    verbs: ["create", "delete", "update", "patch"]  # Allowed actions on deployments
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: use-clusterrole-in-prod
+  namespace: prod                              # RoleBinding applies only within the 'prod' namespace
+roleRef:
+  kind: ClusterRole                            # Refers to a ClusterRole (not a Role)
+  name: elevated-workload-editor               # The ClusterRole being referenced
+  apiGroup: rbac.authorization.k8s.io         # Standard API group for RBAC
+subjects:
+  # Subject: User 'seema' granted permissions
+  - kind: User
+    name: seema
+    apiGroup: rbac.authorization.k8s.io
